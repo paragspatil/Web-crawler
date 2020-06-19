@@ -2,238 +2,201 @@ package crawler;
 
 import javax.swing.*;
 import javax.swing.table.DefaultTableModel;
-import javax.swing.table.TableColumn;
 import java.awt.*;
-import java.io.BufferedInputStream;
+import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
-import java.net.MalformedURLException;
+import java.io.InputStreamReader;
 import java.net.URL;
 import java.net.URLConnection;
 import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
-import java.util.LinkedHashMap;
-import java.util.List;
 import java.util.Map;
+import java.util.TreeMap;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public class WebCrawler extends JFrame {
+
+    private static final String LINE_SEPARATOR = System.getProperty("line.separator");
+    private JTextArea htmlTextArea;
+    private JTextField urlTextField;
+    private JButton runButton;
+    private JLabel titleLabel;
+    private JTable titlesTable;
+    final private String[] titlesTableHeader = new String[] {"URL", "Title"};
+
     public WebCrawler() {
+        super("Web Crawler");
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        setSize(800, 700);
+        JPanel contents = new JPanel();
+        JPanel panelTop = new JPanel();
+        JPanel panelLabel = new JPanel();
+        JPanel panelContents = new JPanel();
+        urlTextField = getUrlTextField();
+        htmlTextArea = getHtmlTextArea();
+        runButton = getRunButton();
+        titleLabel = getTitleLabel();
+        panelTop.add(urlTextField);
+        panelTop.add(runButton);
+        titlesTable = getTitlesTable();
+        titlesTable.setEnabled(false);
+        panelLabel.add(titleLabel);
+        htmlTextArea.setVisible(false);
+        panelContents.add(htmlTextArea);
+        panelContents.add(new JScrollPane(titlesTable), BorderLayout.WEST);
+        contents.setLayout(new BoxLayout(contents, BoxLayout.Y_AXIS));
+        contents.add(panelTop);
+        contents.add(panelLabel);
+        contents.add(panelContents);
+        setContentPane(contents);
+        setSize(560, 700);
         setVisible(true);
-        setLayout(null);
-        setTitle("WebCrawler");
-        initcomponents();
     }
-    private void initcomponents(){
-        //text filed for inputting URl
-        JTextField UrlTextField = new JTextField();
-        UrlTextField.setBounds(20,20, 500,30);
-        //UrlTextField.setText("HTML code?");
-        UrlTextField.setName("UrlTextField");
-        UrlTextField.setLayout(null);
-        //UrlTextField.setEditable(false);
-        UrlTextField.setVisible(true);
-        //UrlTextField.disable();
-        add(UrlTextField);
 
+    private JLabel getTitleLabel() {
+        JLabel titleLabel = new JLabel("Title: ");
+        titleLabel.setName("TitleLabel");
+        return titleLabel;
+    }
 
-        // Button to get URL and download page;
-        JButton RunButton = new JButton();
-        RunButton.setBounds(550,20,100,30);
-        RunButton.setVisible(true);
-        RunButton.setText("Get text!");
-        RunButton.setName("RunButton");
-        add(RunButton);
-
-        // jtable
+    private JTable getTitlesTable() {
         DefaultTableModel model = new DefaultTableModel();
-        JTable TitlesTable = new JTable(model);
-        TitlesTable.setName("TitlesTable");
-        TitlesTable.setVisible(true);
-        TitlesTable.setBounds(20,100,740,550);
-        TitlesTable.setPreferredScrollableViewportSize(new Dimension(740,550));
-        JScrollPane scrollPane = new JScrollPane(TitlesTable);
-        add(TitlesTable);
         model.addColumn("URL");
         model.addColumn("Title");
-        TitlesTable.disable();
+        JTable titlesTable = new JTable(model);
+        titlesTable.setName("TitlesTable");
+        titlesTable.setSize(540, 600);
+        return titlesTable;
+    }
 
-        TableColumn column1 = TitlesTable.getTableHeader().getColumnModel().getColumn(0);
-        column1.setHeaderValue("URL");
-        TableColumn column2 = TitlesTable.getTableHeader().getColumnModel().getColumn(1);
-        column2.setHeaderValue("Title");
-        //add title lable
-        JLabel TitleLabel = new JLabel();
-        TitleLabel.setName("TitleLabel");
-        TitleLabel.setBounds(100,60,500,60);
-        TitleLabel.setVisible(true);
-        Font font = new Font("Courier", Font.BOLD,12);
-        TitleLabel.setFont(font);
-        TitleLabel.setFont(TitleLabel.getFont().deriveFont(16f));
-        add(TitleLabel);
+    private JTextArea getHtmlTextArea() {
+        JTextArea textArea = new JTextArea("HTML code?", 38, 47);
+        textArea.setName("HtmlTextArea");
+        textArea.setVisible(true);
+        textArea.setEnabled(false);
+        textArea.setLineWrap(true);
+        return textArea;
+    }
 
+    private JTextField getUrlTextField() {
+        JTextField textField = new JTextField(40);
+        textField.setName("UrlTextField");
+        return textField;
+    }
 
-        //a lable for word "Title"
-        JLabel Title = new JLabel();
-        Title.setBounds(20,60,80,60);
-        Title.setVisible(true);
-        Title.setText("Title: ");
-        Title.setFont(font);
-        Title.setFont(Title.getFont().deriveFont(16f));
-        add(Title);
+    private JButton getRunButton() {
+        JButton button = new JButton("Get text!");
+        button.setSize( 100, 25);
+        button.setName("RunButton");
+        button.addActionListener(e -> {
+            getLinks();
+        });
+        return button;
+    }
 
+    private void parseHtml() {
+        try {
+            final String url = urlTextField.getText();
+            final InputStream inputStream = new URL(url).openStream();
+            final BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream, StandardCharsets.UTF_8));
+            final StringBuilder stringBuilder = new StringBuilder();
+            final String LINE_SEPARATOR = System.getProperty("line.separator");
 
+            String nextLine;
+            while ((nextLine = reader.readLine()) != null) {
+                stringBuilder.append(nextLine);
+                stringBuilder.append(LINE_SEPARATOR);
+            }
+            final String siteText = stringBuilder.toString();
+            Matcher matcher = Pattern.compile("(<title[\\w=\\-\"]*>)([\\w\\s\\-\"]*)(</title>)").matcher(siteText);
+            if (matcher.find()) {
+                titleLabel.setText(matcher.group(2));
+            }
+            htmlTextArea.setText(siteText);
+        } catch (Exception exception) {
+            htmlTextArea.setText(exception.getMessage());
+        }
+    }
 
-
-
-
-        //Regular expression for extracting title;
-       // String Titleregex = "<title>.*<\\/title>";
-        String Titleregex = "<title>.*<\\/title>";
-        Pattern pattern = Pattern.compile(Titleregex);
-
-        //Regular Expression for strings
-        String linkRegex = "<a href=\"[\\w\\/:\\.]*\"";
-        Pattern linkpattern = Pattern.compile(linkRegex);
-        Map<String,String> titlelink = new LinkedHashMap<>();
-
-
-        // RunButton execution function
-        RunButton.addActionListener( e -> {
-            List<String> listlink = new ArrayList<>();
-            List<String> finallistlink = new ArrayList<>();
-                     String url = UrlTextField.getText();/* Get url from JTextField */
-                    int h = model.getRowCount();
-                    for (int i = 0; i < h; i++){
-                        model.removeRow(i);
-                    }
-                    System.out.println(url + "     this is the url");
-                    if(!(url.contains(".")) && !(url.contains("/"))){
-                     url = "http://localhost:2555/" + url;
-                    }
-                    URLConnection urlConnection = null;
-                    try {
-                        urlConnection = new URL(url).openConnection();
-                    } catch (IOException ioException) {
-                        ioException.printStackTrace();
-                        System.out.println("Exception here");
-                    }
-
-                    if (urlConnection.getContentType().startsWith("text/html")) {
-
-                        try (InputStream inputStream = new BufferedInputStream(new URL(url).openStream())) {
-                            String siteText = new String(inputStream.readAllBytes(), StandardCharsets.UTF_8);
-                            Matcher mainlinkmatcher = pattern.matcher(siteText);
-                            if (mainlinkmatcher.find()) {
-                                int start = mainlinkmatcher.start();
-                                int end = mainlinkmatcher.end();
-                                String s = siteText.substring(start + 7, end - 8);
-                                //System.out.println("grchaa!!!");
-                                System.out.println("mainlinktitle: " + s);
-                                model.addRow(new Object[]{url, s});
-                                TitleLabel.setText(s);
-                            }
-                            Matcher linkmatcher = linkpattern.matcher(siteText);
-                            while (linkmatcher.find()) {
-                                //System.out.println("....");
-                                int start = linkmatcher.start();
-                                int end = linkmatcher.end();
-                                //System.out.println(start + "  " + end);
-                                String link = siteText.substring(start + 9, end - 1);
-                                listlink.add(link);
-                            }
-
-                            System.out.println(listlink.toString() + "this is list" + listlink.size());
-
-                            boolean relativelinkflag = true;
-                            for (int i = 0; i < listlink.size(); i++) {
-                                System.out.println(listlink.get(i));
-                                String templink = "";
-
-                                if (listlink.get(i).substring(0, 1).equals("/")) {
-                                    if (url.substring(0, 5).equals("https")) {
-                                        finallistlink.add("https:" + listlink.get(i));
-                                        templink = "https:" + listlink.get(i);
-                                    } else {
-                                        finallistlink.add("http:" + listlink.get(i));
-                                        templink = "http:" + listlink.get(i);
-                                    }
-                                } else if (listlink.get(i).substring(0, 2).equals("ht")) {
-                                    finallistlink.add(listlink.get(i));
-                                    templink = listlink.get(i);
-                                } else if (listlink.get(i).contains("/")) {
-                                    if (url.substring(0, 5).equals("https")) {
-                                        finallistlink.add("https://" + listlink.get(i));
-                                        templink = "https://" + listlink.get(i);
-                                    } else {
-                                        finallistlink.add("http://" + listlink.get(i));
-                                        templink = "http://" + listlink.get(i);
-                                    }
-                                } else if (listlink.get(i).contains(".")) {
-                                    String temp = url;
-                                    int j = temp.length() - 1;
-                                    while (temp.charAt(j) != '/') {
-                                        j = j - 1;
-                                    }
-
-                                    finallistlink.add(temp.substring(0, j) + listlink.get(i));
-                                    templink = temp.substring(0, j) + listlink.get(i);
-                                } else {
-                                    System.out.println("adding localhost");
-                                    if (!(finallistlink.contains("http://localhost:25555/" + listlink.get(i)))) {
-                                        finallistlink.add("http://localhost:25555/" + listlink.get(i));
-                                    }
-                                }
-                                System.out.println("size" + finallistlink.size());
-                            }
-                            System.out.println(finallistlink.toString() + "finallistlink" + finallistlink.size());
-                            for (int k = 0; k < finallistlink.size(); k++) {
-                                //String title = "";
-                                System.out.println("processing link" + k);
-                                URLConnection urlConnection2 = null;
-                                try {
-                                    urlConnection2 = new URL(finallistlink.get(k)).openConnection();
-                                    System.out.println(urlConnection2.getContentType().startsWith("text/html"));
-                                    if (urlConnection2.getContentType().startsWith("text/html")) {
-                                        InputStream inputStream2 = new BufferedInputStream(new URL(finallistlink.get(k)).openStream());
-                                        String siteText2 = new String(inputStream2.readAllBytes(), StandardCharsets.UTF_8);
-                                        Matcher matcher = pattern.matcher(siteText2);
-                                        // title = siteText2.substring(siteText.indexOf("title")+7, siteText.indexOf("/title")-4);
-                                        if (matcher.find()) {
-                                            System.out.println("found title");
-                                            int start = matcher.start();
-                                            int end = matcher.end();
-                                            String title = siteText2.substring(start+7 , end - 8);
-                                            System.out.println(k + " " + title);
-                                            titlelink.put(finallistlink.get(k), title);
-                                            model.addRow(new Object[]{finallistlink.get(k), title});
-                                        }
-                                        //System.out.println(siteText2);
-                                    }
-                                } catch (Exception z) {
-                                    z.printStackTrace();
-                                    System.out.println("Exception here!!");
-                                    //System.out.println(z.getMessage());
-                                }
-
-
-                            }
-
-
-                        } catch (MalformedURLException malformedURLException) {
-                            malformedURLException.printStackTrace();
-                        } catch (IOException ioException) {
-                            ioException.printStackTrace();
+    private void getLinks() {
+        try {
+            parseHtml();
+            Pattern patternTag = Pattern.compile("(<a.*?href=[\"'])(.*?)([\"'].*?>)(.*?)(</a>)");
+            Matcher matcherTag = patternTag.matcher(htmlTextArea.getText());
+            Pattern patternBaseUrl = Pattern.compile("(https?://)([\\w.-]+)(.*?)(/?)([^/]*)");
+            Pattern patternNormalUrl = Pattern.compile("https?://.*?");
+            Pattern patternRelativeUrl = Pattern.compile("(/?)([\\w.%/-]+)");
+            URL url;
+            URLConnection connection;
+            Matcher matcherUrl;
+            String baseUrl;
+            String currentUrl;
+            String urlString;
+            Map<String, String> mapData = new TreeMap<>();
+            Matcher matcherBaseUrl = patternBaseUrl.matcher(urlTextField.getText());
+            if (matcherBaseUrl.matches()) {
+                baseUrl = matcherBaseUrl.group(1) + matcherBaseUrl.group(2);
+                currentUrl = matcherBaseUrl.group(1) + matcherBaseUrl.group(2) + matcherBaseUrl.group(3) + matcherBaseUrl.group(4);
+            } else {
+                baseUrl = "http://localhost";
+                currentUrl = "http://localhost/";
+            }
+            mapData.put(urlTextField.getText(), titleLabel.getText());
+            while (matcherTag.find()) {
+                if (patternNormalUrl.matcher(matcherTag.group(2)).matches()) {
+                    url = new URL(matcherTag.group(2));
+                    connection = url.openConnection();
+                    if (connection.getContentType() != null) {
+                        if (connection.getContentType().equals("text/html")) {
+                            mapData.put(matcherTag.group(2), findTitleInUrl(connection));
                         }
-
-                        System.out.println(titlelink + "map");
-
+                    }
+                } else {
+                    matcherUrl = patternRelativeUrl.matcher(matcherTag.group(2));
+                    if (matcherUrl.matches()) {
+                        if (matcherUrl.group(1).length() == 1) {
+                            urlString = baseUrl + matcherUrl.group(0);
+                        } else {
+                            urlString = currentUrl + matcherUrl.group(0);
+                        }
+                        url = new URL(urlString);
+                        connection = url.openConnection();
+                        if (connection.getContentType() != null) {
+                            if (connection.getContentType().equals("text/html")) {
+                                mapData.put(urlString, findTitleInUrl(connection));
+                            }
+                        }
                     }
                 }
-        );
+            }
+            String[][] tableData = new String[mapData.size()][];
+            int i = 0;
+            for (Map.Entry<String, String> entry : mapData.entrySet()) {
+                tableData[i] = new String[] { entry.getKey(), entry.getValue() };
+                i++;
+            }
+            if (i > 0) {
+                titlesTable.setModel(new DefaultTableModel(tableData, titlesTableHeader));
+                titlesTable.setEnabled(true);
+            }
+        } catch (Exception exception) {
+            htmlTextArea.setText(exception.getMessage());
+        }
+    }
 
+    private String findTitleInUrl(URLConnection connection) throws IOException {
+        BufferedReader reader = new BufferedReader(new InputStreamReader(connection.getInputStream(), StandardCharsets.UTF_8));
+        String nextLine;
+        StringBuilder stringBuilder = new StringBuilder();
+        while ((nextLine = reader.readLine()) != null) {
+            stringBuilder.append(nextLine);
+            stringBuilder.append(LINE_SEPARATOR);
+        }
+        Pattern patternTitle = Pattern.compile("(<title[\\w=\\-\"]*>)(.*?)(</title>)");
+        Matcher matcherTitle = patternTitle.matcher(stringBuilder);
+        if (matcherTitle.find()) {
+            return matcherTitle.group(2);
+        }
+        return "No title";
     }
 }
