@@ -3,13 +3,11 @@ package crawler;
 import javax.swing.*;
 import javax.swing.table.DefaultTableModel;
 import java.awt.*;
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
+import java.io.*;
 import java.net.URL;
 import java.net.URLConnection;
 import java.nio.charset.StandardCharsets;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.TreeMap;
 import java.util.regex.Matcher;
@@ -23,7 +21,9 @@ public class WebCrawler extends JFrame {
     private JButton runButton;
     private JLabel titleLabel;
     private JTable titlesTable;
+    private JTextField ExportUrlTextField;
     final private String[] titlesTableHeader = new String[] {"URL", "Title"};
+    Map<String,String> LinkTitle = new LinkedHashMap<>();
 
     public WebCrawler() {
         super("Web Crawler");
@@ -32,10 +32,16 @@ public class WebCrawler extends JFrame {
         JPanel panelTop = new JPanel();
         JPanel panelLabel = new JPanel();
         JPanel panelContents = new JPanel();
+        JPanel panelbottom = new JPanel();
+        JButton exportButton = new JButton();
+        JLabel exportlabel = new JLabel();
         urlTextField = getUrlTextField();
         htmlTextArea = getHtmlTextArea();
         runButton = getRunButton();
         titleLabel = getTitleLabel();
+        exportButton = getExportButton();
+        ExportUrlTextField = ExportUrlTextField();
+        exportlabel = exportLabel();
         panelTop.add(urlTextField);
         panelTop.add(runButton);
         titlesTable = getTitlesTable();
@@ -48,7 +54,14 @@ public class WebCrawler extends JFrame {
         contents.add(panelTop);
         contents.add(panelLabel);
         contents.add(panelContents);
+        contents.add(exportButton);
+        //contents.add(exportlabel);
+        //contents.add(ExportUrlTextField);
+        panelbottom.add(exportlabel);
+        contents.add(ExportUrlTextField);
+        contents.add(panelbottom);
         setContentPane(contents);
+
         setSize(560, 700);
         setVisible(true);
     }
@@ -93,6 +106,46 @@ public class WebCrawler extends JFrame {
         });
         return button;
     }
+    private  JButton getExportButton(){
+        JButton ExportButton = new JButton("Save");
+        ExportButton.setName("ExportButton");
+        ExportButton.setLocation(400,550);
+        ExportButton.setSize(100,25);
+        ExportButton.addActionListener(e ->{
+            String filename = ExportUrlTextField.getText();
+            File file = new File(filename);
+
+            try (PrintWriter printWriter = new PrintWriter(file)) {
+                for(var entry:LinkTitle.entrySet()){
+                    printWriter.println(entry.getKey());
+                    printWriter.println(entry.getValue());
+                    //printWriter.println("...........");
+                }
+            } catch (FileNotFoundException fileNotFoundException) {
+                fileNotFoundException.printStackTrace();
+            }
+        });
+        return ExportButton;
+    }
+    private  JTextField ExportUrlTextField(){
+        JTextField ExportUrlTextField = new JTextField();
+        ExportUrlTextField.setName("ExportUrlTextField");
+        ExportUrlTextField.setVisible(true);
+        ExportUrlTextField.setLocation(100,500);
+        ExportUrlTextField.setSize(300,25);
+
+        return ExportUrlTextField;
+    }
+
+    private  JLabel exportLabel(){
+        JLabel exportLabel = new JLabel("Export");
+        exportLabel.setVisible(true);
+        exportLabel.setLocation(10,500);
+        exportLabel.setSize(80,25);
+        exportLabel.setHorizontalAlignment(JLabel.LEFT);
+        return  exportLabel;
+    }
+
 
     private void parseHtml() {
         try {
@@ -119,7 +172,12 @@ public class WebCrawler extends JFrame {
     }
 
     private void getLinks() {
+
         try {
+            DefaultTableModel dtm = (DefaultTableModel) titlesTable.getModel();
+            /*for(int i = 0;i < dtm.getRowCount();i++){
+                dtm.removeRow(i);
+            }*/
             parseHtml();
             Pattern patternTag = Pattern.compile("(<a.*?href=[\"'])(.*?)([\"'].*?>)(.*?)(</a>)");
             Matcher matcherTag = patternTag.matcher(htmlTextArea.getText());
@@ -146,6 +204,7 @@ public class WebCrawler extends JFrame {
                 if (patternNormalUrl.matcher(matcherTag.group(2)).matches()) {
                     url = new URL(matcherTag.group(2));
                     connection = url.openConnection();
+                    connection.setRequestProperty("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:63.0) Gecko/20100101 Firefox/63.0");
                     if (connection.getContentType() != null) {
                         if (connection.getContentType().equals("text/html")) {
                             mapData.put(matcherTag.group(2), findTitleInUrl(connection));
@@ -161,6 +220,7 @@ public class WebCrawler extends JFrame {
                         }
                         url = new URL(urlString);
                         connection = url.openConnection();
+                        connection.setRequestProperty("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:63.0) Gecko/20100101 Firefox/63.0");
                         if (connection.getContentType() != null) {
                             if (connection.getContentType().equals("text/html")) {
                                 mapData.put(urlString, findTitleInUrl(connection));
@@ -169,12 +229,17 @@ public class WebCrawler extends JFrame {
                     }
                 }
             }
+            for(var entry:LinkTitle.entrySet()){
+                LinkTitle.remove(entry.getKey(),entry.getValue());
+            }
             String[][] tableData = new String[mapData.size()][];
             int i = 0;
             for (Map.Entry<String, String> entry : mapData.entrySet()) {
                 tableData[i] = new String[] { entry.getKey(), entry.getValue() };
+                LinkTitle.put(entry.getKey(),entry.getValue());
                 i++;
             }
+           // System.out.println(LinkTitle);
             if (i > 0) {
                 titlesTable.setModel(new DefaultTableModel(tableData, titlesTableHeader));
                 titlesTable.setEnabled(true);
